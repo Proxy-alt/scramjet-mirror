@@ -45,7 +45,7 @@ jobs:
         run: |
             if [[ "$COMMIT_DATE" > "$LAST_UPDATED" ]]; then
             echo "Changes detected. Syncing..."
-            rsync -av --exclude='.github' parent-repo/"$TARGET_FOLDER"/ ./ --delete
+            rsync -av --exclude='.github' parent-repo/packages/scramjet/ ./ --delete || [[ $? == 24 ]]
             echo "$COMMIT_DATE" > "$LAST_UPDATED_FILE"
             echo "SHOULD_COMMIT=true" >> $GITHUB_ENV
             else
