@@ -1,0 +1,62 @@
+name: Sync Folder from Parent Repo by Commit Date
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'  # Every 12 hours
+  workflow_dispatch:
+
+jobs:
+  sync-folder:
+    runs-on: ubuntu-latest
+
+    env:
+      PARENT_REPO: https://github.com/HeyPuter/browser.js
+      TARGET_FOLDER: packages/scramjet
+      LAST_UPDATED_FILE: .github/.last_updated
+
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+
+      - name: Read last updated timestamp
+        run: |
+          if [ -f "$LAST_UPDATED_FILE" ]; then
+            LAST_UPDATED=$(cat "$LAST_UPDATED_FILE")
+          else
+            LAST_UPDATED="1970-01-01T00:00:00Z"
+          fi
+          echo "LAST_UPDATED=$LAST_UPDATED" >> $GITHUB_ENV
+
+      - name: Clone parent repo shallow and sparse
+        run: |
+          git clone --depth=1 --filter=blob:none --sparse "$PARENT_REPO" parent-repo
+          cd parent-repo
+          git sparse-checkout set "$TARGET_FOLDER"
+
+      - name: Get latest commit date of target folder
+        run: |
+          cd parent-repo
+          COMMIT_DATE=$(git log -1 --format="%cI" -- "$TARGET_FOLDER")
+          echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
+          echo "Parent repo commit date: $COMMIT_DATE"
+          echo "Stored last updated: $LAST_UPDATED"
+
+      - name: Compare dates and sync if newer
+        run: |
+          if [ "$COMMIT_DATE" \> "$LAST_UPDATED" ]; then
+            echo "Changes detected. Syncing..."
+            rsync -av --exclude='.github' parent-repo/"$TARGET_FOLDER"/ "$TARGET_FOLDER"/ --delete
+            echo "$COMMIT_DATE" > "$LAST_UPDATED_FILE"
+            echo "SHOULD_COMMIT=true" >> $GITHUB_ENV
+          else
+            echo "No changes detected."
+            echo "SHOULD_COMMIT=false" >> $GITHUB_ENV
+
+      - name: Commit and push if updated
+        if: env.SHOULD_COMMIT == 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add "$TARGET_FOLDER" "$LAST_UPDATED_FILE"
+          git commit -m "Sync updates from parent repo ($TARGET_FOLDER)"
+          git push
