@@ -71,7 +71,7 @@ jobs:
 
             # Stage all changes except the parent-repo clone
             git add -A
-            git reset parent-repo  # Unstage the embedded repo if it was added
+            git reset -- parent-repo  # Unstage the embedded repo if it was added
 
             # Double-check that files were actually staged
             if git diff --cached --quiet; then
