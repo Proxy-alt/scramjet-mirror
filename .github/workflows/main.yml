@@ -11,7 +11,7 @@ jobs:
 
     env:
       PARENT_REPO: https://github.com/HeyPuter/browser.js
-      TARGET_FOLDER: packages/scramjet
+      SOURCE_FOLDER: packages/scramjet
       LAST_UPDATED_FILE: .github/.last_updated
 
     steps:
@@ -19,6 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Read last updated timestamp
+        id: read-timestamp
         run: |
           if [ -f "$LAST_UPDATED_FILE" ]; then
             LAST_UPDATED=$(cat "$LAST_UPDATED_FILE")
@@ -31,33 +32,37 @@ jobs:
         run: |
           git clone --depth=1 --filter=blob:none --sparse "$PARENT_REPO" parent-repo
           cd parent-repo
-          git sparse-checkout set "$TARGET_FOLDER"
+          git sparse-checkout set "$SOURCE_FOLDER"
 
-      - name: Get latest commit date of target folder
+      - name: Get latest commit date of source folder
         run: |
           cd parent-repo
-          COMMIT_DATE=$(git log -1 --format="%cI" -- "$TARGET_FOLDER")
+          COMMIT_DATE=$(git log -1 --format="%cI" -- "$SOURCE_FOLDER")
           echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
           echo "Parent repo commit date: $COMMIT_DATE"
           echo "Stored last updated: $LAST_UPDATED"
 
       - name: Compare dates and sync if newer
         run: |
-            if [[ "$COMMIT_DATE" > "$LAST_UPDATED" ]]; then
+          if [[ "$COMMIT_DATE" > "$LAST_UPDATED" ]]; then
             echo "Changes detected. Syncing..."
-            rsync -av --exclude='.github' parent-repo/packages/scramjet/ ./ --delete || [[ $? == 24 ]]
+            rsync -av --exclude='.github' parent-repo/"$SOURCE_FOLDER"/ ./ --delete || exit_code=$?
+            if [[ "$exit_code" != "" && "$exit_code" != "0" && "$exit_code" != "24" ]]; then
+              echo "rsync failed with exit code $exit_code"
+              exit $exit_code
+            fi
             echo "$COMMIT_DATE" > "$LAST_UPDATED_FILE"
             echo "SHOULD_COMMIT=true" >> $GITHUB_ENV
-            else
+          else
             echo "No changes detected."
             echo "SHOULD_COMMIT=false" >> $GITHUB_ENV
-            fi
+          fi
 
       - name: Commit and push if updated
         if: env.SHOULD_COMMIT == 'true'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add "$TARGET_FOLDER" "$LAST_UPDATED_FILE"
-          git commit -m "Sync updates from parent repo ($TARGET_FOLDER)"
+          git add . "$LAST_UPDATED_FILE"
+          git commit -m "Sync updates from parent repo ($SOURCE_FOLDER)"
           git push
