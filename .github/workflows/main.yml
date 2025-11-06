@@ -5,6 +5,8 @@ on:
     - cron: '0 */12 * * *'  # Every 12 hours
   workflow_dispatch:
 
+permissions:
+    contents: write
 jobs:
   sync-folder:
     runs-on: ubuntu-latest
@@ -47,6 +49,7 @@ jobs:
           if [[ "$COMMIT_DATE" > "$LAST_UPDATED" ]]; then
             echo "Changes detected. Syncing..."
             rsync -av --exclude='.github' --exclude='.git' parent-repo/"$SOURCE_FOLDER"/ ./ --delete || exit_code=$?
+            rm -rf parent-repo
             if [[ "$exit_code" != "" && "$exit_code" != "0" && "$exit_code" != "24" ]]; then
               echo "rsync failed with exit code $exit_code"
               exit $exit_code
