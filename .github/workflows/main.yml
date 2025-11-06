@@ -43,14 +43,15 @@ jobs:
 
       - name: Compare dates and sync if newer
         run: |
-          if [ "$COMMIT_DATE" \> "$LAST_UPDATED" ]; then
+            if [[ "$COMMIT_DATE" > "$LAST_UPDATED" ]]; then
             echo "Changes detected. Syncing..."
             rsync -av --exclude='.github' parent-repo/"$TARGET_FOLDER"/ "$TARGET_FOLDER"/ --delete
             echo "$COMMIT_DATE" > "$LAST_UPDATED_FILE"
             echo "SHOULD_COMMIT=true" >> $GITHUB_ENV
-          else
+            else
             echo "No changes detected."
             echo "SHOULD_COMMIT=false" >> $GITHUB_ENV
+            fi
 
       - name: Commit and push if updated
         if: env.SHOULD_COMMIT == 'true'
