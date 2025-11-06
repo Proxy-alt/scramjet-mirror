@@ -48,7 +48,7 @@ jobs:
         run: |
           if [[ "$COMMIT_DATE" > "$LAST_UPDATED" ]]; then
             echo "Changes detected. Syncing..."
-            rsync -av --exclude='.github' --exclude='.git' parent-repo/"$SOURCE_FOLDER"/ ./ --delete || exit_code=$?
+            rsync -avL --exclude='.github' --exclude='.git' parent-repo/"$SOURCE_FOLDER"/ ./ --delete || exit_code=$?
             rm -rf parent-repo
             if [[ "$exit_code" != "" && "$exit_code" != "0" && "$exit_code" != "24" ]]; then
               echo "rsync failed with exit code $exit_code"
