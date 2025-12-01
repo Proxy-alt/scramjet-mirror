@@ -31,11 +31,10 @@ jobs:
           fi
           echo "LAST_UPDATED=$LAST_UPDATED" >> $GITHUB_ENV
 
-      - name: Clone parent repo shallow and sparse
+      - name: Clone parent repo
         run: |
-          git clone --filter=blob:none --sparse "$PARENT_REPO" parent-repo
+          git clone "$PARENT_REPO" parent-repo
           cd parent-repo
-          git sparse-checkout set "$SOURCE_FOLDER"
 
       - name: Get latest commit date of source folder
         run: |
@@ -44,11 +43,6 @@ jobs:
           echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
           echo "Parent repo commit date: $COMMIT_DATE"
           echo "Stored last updated: $LAST_UPDATED"
-
-      - name: Prepare parent repo
-        run: |
-          cd parent-repo
-          git sparse-checkout reapply
       
       - name: Compare dates and sync if newer
         run: |
@@ -60,9 +54,9 @@ jobs:
             exit_code=0
             rsync -avL --copy-unsafe-links \
               --exclude='.github' --exclude='.git' \
-              parent-repo/"$SOURCE_FOLDER"/ ./ --delete --ignore-errors || exit_code=$?
+              parent-repo/packages/scramjet ./ --ignore-errors || exit_code=$?
       
-            if [[ "$exit_code" != "0" && "$exit_code" != "24" ]]; then
+            if [[ "$exit_code" != "0" ]]; then
               echo "rsync failed with exit code $exit_code"
               exit $exit_code
             fi
@@ -87,7 +81,7 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
+          rm -rf parent-repo
           git add -A
           git reset -- parent-repo  # Ensure clone isn't staged
 
