@@ -55,7 +55,7 @@ jobs:
             exit_code=0
             rsync -avL --copy-unsafe-links \
               --exclude='.github' --exclude='.git' \
-              parent-repo/packages/scramjet ./ --ignore-errors || exit_code=$?
+              parent-repo/packages/scramjet/* ./ --ignore-errors || exit_code=$?
       
             if [[ "$exit_code" != "0" ]]; then
               echo "rsync failed with exit code $exit_code"
