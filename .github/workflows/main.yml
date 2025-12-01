@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
 
 permissions:
-    contents: write
+  contents: write
+
 jobs:
   sync-folder:
     runs-on: ubuntu-latest
@@ -32,7 +33,7 @@ jobs:
 
       - name: Clone parent repo shallow and sparse
         run: |
-          git clone --depth=1 --filter=blob:none --sparse "$PARENT_REPO" parent-repo
+          git clone --filter=blob:none --sparse "$PARENT_REPO" parent-repo
           cd parent-repo
           git sparse-checkout set "$SOURCE_FOLDER"
 
@@ -46,9 +47,11 @@ jobs:
 
       - name: Compare dates and sync if newer
         run: |
-          if [[ "$COMMIT_DATE" > "$LAST_UPDATED" ]]; then
-            echo "Changes detected. Syncing..."
+          COMMIT_EPOCH=$(date -d "$COMMIT_DATE" +%s)
+          LAST_UPDATED_EPOCH=$(date -d "$LAST_UPDATED" +%s)
 
+          if [[ $COMMIT_EPOCH -gt $LAST_UPDATED_EPOCH ]]; then
+            echo "Changes detected. Syncing..."
             exit_code=0
             rsync -avL --copy-unsafe-links \
               --exclude='.github' --exclude='.git' \
@@ -73,19 +76,15 @@ jobs:
       - name: Commit and push if updated
         if: env.SHOULD_COMMIT == 'true'
         run: |
-            rm -rf parent-repo  # Clean up clone to avoid nested repo issues
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
-            git config user.name "github-actions"
-            git config user.email "github-actions@github.com"
+          git add -A
+          git reset -- parent-repo  # Ensure clone isn't staged
 
-            # Stage all changes except the parent-repo clone
-            git add -A
-            git reset -- parent-repo  # Unstage the embedded repo if it was added
-
-            # Double-check that files were actually staged
-            if git diff --cached --quiet; then
+          if git diff --cached --quiet; then
             echo "No changes to commit."
-            else
+          else
             git commit -m "Sync updates from parent repo ($SOURCE_FOLDER)"
-            git push
-            fi
+            git push origin HEAD:${{ github.ref }}
+          fi
