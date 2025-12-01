@@ -46,21 +46,29 @@ jobs:
 
       - name: Compare dates and sync if newer
         run: |
-            if [[ "$COMMIT_DATE" > "$LAST_UPDATED" ]]; then
+          if [[ "$COMMIT_DATE" > "$LAST_UPDATED" ]]; then
             echo "Changes detected. Syncing..."
 
-            rsync -avL --copy-unsafe-links --exclude='.github' --exclude='.git' parent-repo/"$SOURCE_FOLDER"/ ./ --delete || exit_code=$?
-            rm -rf parent-repo
-            if [[ "$exit_code" != "" && "$exit_code" != "0" && "$exit_code" != "24" ]]; then
-                echo "rsync failed with exit code $exit_code"
-                exit $exit_code
+            exit_code=0
+            rsync -avL --copy-unsafe-links \
+              --exclude='.github' --exclude='.git' \
+              parent-repo/"$SOURCE_FOLDER"/ ./ --delete || exit_code=$?
+
+            if [[ "$exit_code" != "0" && "$exit_code" != "24" ]]; then
+              echo "rsync failed with exit code $exit_code"
+              exit $exit_code
             fi
+
             echo "$COMMIT_DATE" > "$LAST_UPDATED_FILE"
             echo "SHOULD_COMMIT=true" >> $GITHUB_ENV
-            else
+          else
             echo "No changes detected."
             echo "SHOULD_COMMIT=false" >> $GITHUB_ENV
-            fi
+          fi
+
+      - name: Clean up parent repo
+        if: env.SHOULD_COMMIT == 'true'
+        run: rm -rf parent-repo
 
       - name: Commit and push if updated
         if: env.SHOULD_COMMIT == 'true'
