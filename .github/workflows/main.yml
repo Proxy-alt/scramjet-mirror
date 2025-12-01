@@ -45,29 +45,38 @@ jobs:
           echo "Parent repo commit date: $COMMIT_DATE"
           echo "Stored last updated: $LAST_UPDATED"
 
+      - name: Prepare parent repo
+        run: |
+          cd parent-repo
+          git sparse-checkout reapply
+      
       - name: Compare dates and sync if newer
         run: |
           COMMIT_EPOCH=$(date -d "$COMMIT_DATE" +%s)
           LAST_UPDATED_EPOCH=$(date -d "$LAST_UPDATED" +%s)
-
+      
           if [[ $COMMIT_EPOCH -gt $LAST_UPDATED_EPOCH ]]; then
             echo "Changes detected. Syncing..."
             exit_code=0
             rsync -avL --copy-unsafe-links \
               --exclude='.github' --exclude='.git' \
-              parent-repo/"$SOURCE_FOLDER"/ ./ --delete || exit_code=$?
-
+              parent-repo/"$SOURCE_FOLDER"/ ./ --delete --ignore-errors || exit_code=$?
+      
             if [[ "$exit_code" != "0" && "$exit_code" != "24" ]]; then
               echo "rsync failed with exit code $exit_code"
               exit $exit_code
             fi
-
+      
             echo "$COMMIT_DATE" > "$LAST_UPDATED_FILE"
             echo "SHOULD_COMMIT=true" >> $GITHUB_ENV
           else
             echo "No changes detected."
             echo "SHOULD_COMMIT=false" >> $GITHUB_ENV
           fi
+      
+      - name: Clean up parent repo
+        if: env.SHOULD_COMMIT == 'true'
+        run: rm -rf parent-repo
 
       - name: Clean up parent repo
         if: env.SHOULD_COMMIT == 'true'
