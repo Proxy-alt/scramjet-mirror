@@ -53,10 +53,16 @@ jobs:
           if [[ $COMMIT_EPOCH -gt $LAST_UPDATED_EPOCH ]]; then
             echo "Changes detected. Syncing..."
             exit_code=0
-            rsync -avL --copy-unsafe-links \
-              --exclude='.github' --exclude='.git' \
-              parent-repo/packages/scramjet/* ./ --ignore-errors || exit_code=$?
-      
+           exit_code=0
+          rsync -avL --copy-unsafe-links \
+            --exclude='.github' \
+            --exclude='.git' \
+            --exclude='package-lock.json' \
+            --exclude='pnpm-lock.yaml' \
+            --exclude='package.json' \
+            --exclude='.gitignore' \
+            --exclude='pnpm-workspace.yaml' \
+            parent-repo/packages/scramjet/* ./ --ignore-errors || exit_code=$?
             if [[ "$exit_code" != "0" ]]; then
               echo "rsync failed with exit code $exit_code"
               exit $exit_code
@@ -71,11 +77,9 @@ jobs:
       
       - name: Clean up parent repo
         if: env.SHOULD_COMMIT == 'true'
-        run: rm -rf parent-repo
-
-      - name: Clean up parent repo
-        if: env.SHOULD_COMMIT == 'true'
-        run: rm -rf parent-repo
+        run: 
+          rm -rf parent-repo
+          pnpm i --fix-lockfile
 
       - name: Commit and push if updated
         if: env.SHOULD_COMMIT == 'true'
@@ -92,3 +96,28 @@ jobs:
             git commit -m "Sync updates from parent repo ($SOURCE_FOLDER)"
             git push origin HEAD:${{ github.ref }}
           fi
+  Publish Packages:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish to npm
+        run: pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

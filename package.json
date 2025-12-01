@@ -1,10 +1,14 @@
 {
-	"name": "scramjet-root",
+	"name": "@petezah-games/scramjet-mirror",
 	"version": "1.0.0",
-	"description": "",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/proxy-alt/scramjet-mirror"
+	},
+	"description": "A mirror of the Scramjet from browser.js for the ability to pull from npm",
 	"type": "module",
 	"keywords": [],
-	"author": "Mercury Workshop",
+	"author": "Petezah Games",
 	"license": "AGPL-3.0-only",
 	"packageManager": "pnpm@10.12.1",
 	"scripts": {
@@ -18,6 +22,7 @@
 		"@rspack/core": "^1.5.8"
 	},
 	"dependencies": {
+		"pnpm": "^10.24.0",
 		"prettier": "^3.6.2"
 	}
 }
