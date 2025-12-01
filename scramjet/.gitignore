@@ -1,4 +1,0 @@
-meta.json
-packages/core/rewriter/target
-packages/core/rewriter/wasm/out
-packages/core/rewriter/*.js
