@@ -77,7 +77,7 @@ jobs:
       
       - name: Clean up parent repo
         if: env.SHOULD_COMMIT == 'true'
-        run: 
+        run: |
           rm -rf parent-repo
           pnpm i --fix-lockfile
 
